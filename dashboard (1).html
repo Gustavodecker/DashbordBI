@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Dashboard BI — Consinco, Winthor & TOTVS Moda</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--bg4:#242d40;
+  --border:#2a3447;--border2:#344060;
+  --text:#e8eaf0;--text2:#8892a4;--text3:#555f74;
+  --blue:#4a9eff;--blue2:#1e4a8a;
+  --green:#2ecc71;--amber:#f59e0b;--red:#ef4444;
+  --purple:#a855f7;--teal:#14b8a6;--pink:#ec4899;--indigo:#6366f1;
+  --radius:12px;--radius2:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh;overflow-x:hidden}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:16px}
+.spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--text2);font-size:14px;font-weight:600}
+.loading-step{color:var(--text3);font-size:11px;margin-top:4px;text-align:center}
+.loading-error{color:var(--red);font-size:12px;margin-top:8px;max-width:400px;text-align:center;line-height:1.5;padding:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;display:none}
+#app{display:none}
+header{background:linear-gradient(135deg,#0d1a3a,#1a2742,#0d2a5c);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:10px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--blue),var(--purple));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.logo h1{font-size:17px;font-weight:700}
+.logo .lsub{font-size:11px;color:var(--text2);display:block;margin-top:1px}
+.header-right{display:flex;gap:8px;flex-wrap:wrap}
+.hbadge{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;color:var(--text2)}
+.hbadge strong{color:var(--text);margin-left:4px}
+.tabs{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 28px;display:flex;gap:2px;overflow-x:auto}
+.tab{padding:13px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text3);border-bottom:3px solid transparent;margin-bottom:-1px;transition:all .2s;border-radius:8px 8px 0 0;white-space:nowrap}
+.tab:hover{color:var(--text2);background:var(--bg3)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);background:rgba(74,158,255,.06)}
+.tab-count{background:var(--bg4);color:var(--text2);font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700;margin-left:6px}
+.tab.active .tab-count{background:var(--blue2);color:var(--blue)}
+.filtros{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.fgroup{display:flex;flex-direction:column;gap:3px}
+.fgroup label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.filtros select{font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius2);background:var(--bg3);color:var(--text);cursor:pointer;min-width:150px;outline:none}
+.filtros select:focus{border-color:var(--blue)}
+.filtros button{padding:7px 16px;background:var(--blue2);color:var(--blue);border:1px solid var(--blue);border-radius:var(--radius2);cursor:pointer;font-size:12px;font-weight:700;transition:all .2s;align-self:flex-end}
+.filtros button:hover{background:var(--blue);color:#fff}
+.finfo{font-size:11px;color:var(--text3);align-self:flex-end}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:20px 28px}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+.kpi.blue::before{background:linear-gradient(90deg,var(--blue),var(--purple))}
+.kpi.green::before{background:linear-gradient(90deg,var(--green),var(--teal))}
+.kpi.teal::before{background:linear-gradient(90deg,var(--teal),var(--blue))}
+.kpi.purple::before{background:linear-gradient(90deg,var(--purple),var(--pink))}
+.kpi.amber::before{background:linear-gradient(90deg,var(--amber),var(--red))}
+.kpi .lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:8px}
+.kpi .val{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
+.kpi.blue .val{color:var(--blue)}.kpi.green .val{color:var(--green)}
+.kpi.teal .val{color:var(--teal)}.kpi.purple .val{color:var(--purple)}.kpi.amber .val{color:var(--amber)}
+.kpi .sub{font-size:10px;color:var(--text3)}
+.section{padding:0 28px 20px}
+.section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.card h3{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
+.card .csub{font-size:11px;color:var(--text3);margin-bottom:14px}
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;max-height:640px;overflow-y:auto;padding-right:4px}
+.clients-grid::-webkit-scrollbar{width:4px}
+.clients-grid::-webkit-scrollbar-track{background:var(--bg3)}
+.clients-grid::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.client-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:14px;transition:all .2s;cursor:pointer}
+.client-card:hover{border-color:var(--blue);background:var(--bg4);transform:translateY(-1px);box-shadow:0 4px 16px rgba(74,158,255,.15)}
+.cc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.cc-name{font-size:12px;font-weight:700;color:var(--text);line-height:1.3;flex:1;margin-right:8px}
+.cc-env{font-size:9px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap}
+.env-prod{background:rgba(46,204,113,.15);color:var(--green);border:1px solid rgba(46,204,113,.2)}
+.env-dev{background:rgba(74,158,255,.12);color:var(--blue);border:1px solid rgba(74,158,255,.2)}
+.env-qa{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.env-other{background:var(--bg4);color:var(--text3);border:1px solid var(--border)}
+.cc-region{font-size:10px;color:var(--text3);margin-bottom:8px}
+.cc-gg{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;background:var(--bg);border-radius:var(--radius2);border:1px solid var(--border)}
+.cc-gg-val{font-size:22px;font-weight:800;color:var(--blue);line-height:1;min-width:40px}
+.cc-gg-info{flex:1}
+.cc-gg-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.cc-gg-detail{font-size:10px;color:var(--text2);margin-top:2px}
+.cc-resources{display:flex;gap:6px;margin-bottom:8px}
+.cc-res-item{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:5px 8px;text-align:center}
+.cc-res-val{font-size:14px;font-weight:800;line-height:1}
+.cc-res-label{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.cpu-color{color:var(--teal)}.mem-color{color:var(--purple)}.srv-color{color:var(--amber)}
+.cc-servers{display:flex;flex-wrap:wrap;gap:5px}
+.srv-pill{display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700}
+.srv-relay{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+.srv-desktop{background:rgba(74,158,255,.12);color:var(--blue);border:1px solid rgba(74,158,255,.2)}
+.srv-pdv{background:rgba(245,158,11,.12);color:var(--amber);border:1px solid rgba(245,158,11,.2)}
+.srv-ndd{background:rgba(168,85,247,.12);color:var(--purple);border:1px solid rgba(168,85,247,.2)}
+.srv-core{background:rgba(20,184,166,.12);color:var(--teal);border:1px solid rgba(20,184,166,.2)}
+.srv-elastic{background:rgba(99,102,241,.12);color:var(--indigo);border:1px solid rgba(99,102,241,.2)}
+.srv-coletor{background:rgba(236,72,153,.12);color:var(--pink);border:1px solid rgba(236,72,153,.2)}
+.srv-uniface{background:rgba(168,85,247,.12);color:var(--purple);border:1px solid rgba(168,85,247,.2)}
+.srv-pill .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.cc-hint{font-size:9px;color:var(--text3);text-align:right;margin-top:6px;opacity:.6}
+.pagination{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.page-info{font-size:11px;color:var(--text3)}
+.page-btns{display:flex;gap:6px}
+.page-btn{padding:5px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;font-size:11px;font-weight:600;transition:all .2s}
+.page-btn:hover:not([disabled]){background:var(--blue2);border-color:var(--blue);color:var(--blue)}
+.page-btn[disabled]{opacity:.3;cursor:not-allowed}
+
+/* DRAWER */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(2px)}
+.drawer-overlay.open{opacity:1;pointer-events:all}
+.drawer{position:fixed;top:0;right:-680px;width:660px;max-width:95vw;height:100vh;background:var(--bg2);border-left:1px solid var(--border);z-index:1001;transition:right .35s cubic-bezier(.4,0,.2,1);overflow-y:auto;display:flex;flex-direction:column}
+.drawer.open{right:0}
+.drawer::-webkit-scrollbar{width:4px}
+.drawer::-webkit-scrollbar-track{background:var(--bg3)}
+.drawer::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+.drawer-header{padding:20px 24px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg2);z-index:2;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.drawer-title{font-size:15px;font-weight:700;color:var(--text);line-height:1.3;flex:1}
+.drawer-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.drawer-close{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);cursor:pointer;font-size:16px;padding:6px 10px;transition:all .2s;flex-shrink:0}
+.drawer-close:hover{background:var(--red);border-color:var(--red);color:#fff}
+.drawer-body{padding:20px 24px;flex:1}
+.d-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.d-kpi{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;text-align:center}
+.d-kpi .val{font-size:22px;font-weight:800;line-height:1;margin-bottom:4px}
+.d-kpi .lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.d-kpi.gg .val{color:var(--blue)}.d-kpi.cpu .val{color:var(--teal)}
+.d-kpi.mem .val{color:var(--purple)}.d-kpi.srv .val{color:var(--amber)}
+.d-section-title{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin:20px 0 10px;display:flex;align-items:center;gap:8px}
+.d-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.srv-detail-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden}
+.sdc-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
+.sdc-tipo{font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+.sdc-qtd{font-size:11px;color:var(--text3);background:var(--bg4);padding:2px 8px;border-radius:8px}
+.sdc-body{padding:12px 16px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sdc-item{text-align:center}
+.sdc-val{font-size:18px;font-weight:700;line-height:1;margin-bottom:3px}
+.sdc-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.sdc-sub{font-size:10px;color:var(--text2);margin-top:2px}
+.bar-row{margin-top:8px}
+.bar-label{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:3px}
+.bar-track{height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.moda-notice{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--amber);margin-bottom:16px}
+
+.page{display:none}.page.active{display:block}
+footer{text-align:center;padding:12px;color:var(--text3);font-size:10px;border-top:1px solid var(--border);background:var(--bg2);margin-top:8px}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}.kpis,.section,.filtros,.tabs{padding-left:16px;padding-right:16px}header{padding:14px 16px}.d-kpis{grid-template-columns:repeat(2,1fr)}.sdc-body{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>
+    <div class="loading-text">Carregando dashboard...</div>
+    <div class="loading-step" id="loading-step">Conectando ao Google Drive</div>
+  </div>
+  <div class="loading-error" id="loading-error"></div>
+</div>
+
+<div class="drawer-overlay" id="overlay" onclick="fecharDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div><div class="drawer-title" id="drawer-title">—</div><div class="drawer-sub" id="drawer-sub">—</div></div>
+    <button class="drawer-close" onclick="fecharDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+</div>
+
+<div id="app">
+<header>
+  <div class="logo">
+    <div class="logo-icon">📊</div>
+    <div><h1>Dashboard BI</h1><span class="lsub" id="hdata">—</span></div>
+  </div>
+  <div class="header-right">
+    <div class="hbadge">Consinco <strong id="hc-total">—</strong></div>
+    <div class="hbadge">Winthor <strong id="hw-total">—</strong></div>
+    <div class="hbadge">TOTVS Moda <strong id="hm-total">—</strong></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="mudarAba('c',this)">⬡ Consinco <span class="tab-count" id="tc-count">—</span></div>
+  <div class="tab" onclick="mudarAba('w',this)">⬡ Winthor <span class="tab-count" id="tw-count">—</span></div>
+  <div class="tab" onclick="mudarAba('m',this)">⬡ TOTVS Moda <span class="tab-count" id="tm-count">—</span></div>
+</div>
+
+<!-- ==================== CONSINCO ==================== -->
+<div id="page-c" class="page active">
+  <div class="filtros">
+    <div class="fgroup"><label>Ambiente</label>
+      <select id="c-env" onchange="renderC()"><option value="">Todos</option><option value="production">Produção</option><option value="development">Desenvolvimento</option></select>
+    </div>
+    <div class="fgroup"><label>Região</label><select id="c-reg" onchange="renderC()"><option value="">Todas</option></select></div>
+    <div class="fgroup"><label>Cliente</label><select id="c-cli" onchange="renderC()"><option value="">Todos</option></select></div>
+    <button onclick="limpar('c')">↺ Limpar</button>
+    <span class="finfo" id="c-info"></span>
+  </div>
+  <div class="kpis">
+    <div class="kpi blue"><div class="lbl">Total usuários</div><div class="val" id="c-k-gg">—</div><div class="sub">GG Connections (prod)</div></div>
+    <div class="kpi green"><div class="lbl">Clientes</div><div class="val" id="c-k-cli">—</div><div class="sub">no filtro atual</div></div>
+    <div class="kpi teal"><div class="lbl">Total vCPUs</div><div class="val" id="c-k-cpu">—</div><div class="sub">todos os servidores</div></div>
+    <div class="kpi purple"><div class="lbl">Total RAM</div><div class="val" id="c-k-mem">—</div><div class="sub">GB — todos servidores</div></div>
+    <div class="kpi amber"><div class="lbl">Servidores</div><div class="val" id="c-k-srv">—</div><div class="sub">total de instâncias</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Clientes — clique para ver CPU, memória e detalhes</div>
+    <div class="card">
+      <div id="c-cards"></div>
+      <div class="pagination"><span class="page-info" id="c-pinfo"></span><div class="page-btns"><button class="page-btn" id="c-pprev" onclick="paginar('c',-1)">← Anterior</button><button class="page-btn" id="c-pnext" onclick="paginar('c',1)">Próximo →</button></div></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-title">Resumo por região</div>
+    <div class="grid2">
+      <div class="card"><h3>GG Connections por região</h3><div class="csub">Total de usuários — prod vs dev</div><div style="position:relative;height:220px"><canvas id="c-cReg"></canvas></div></div>
+      <div class="card"><h3>Recursos por tipo de servidor</h3><div class="csub">Total vCPUs e RAM (GB)</div><div style="position:relative;height:220px"><canvas id="c-cSrv"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== WINTHOR ==================== -->
+<div id="page-w" class="page">
+  <div class="filtros">
+    <div class="fgroup"><label>Ambiente</label>
+      <select id="w-env" onchange="renderW()"><option value="production">Produção</option><option value="">Todos</option><option value="development">Desenvolvimento</option><option value="qa">QA</option><option value="troubleshoot">Troubleshoot</option></select>
+    </div>
+    <div class="fgroup"><label>Região</label><select id="w-reg" onchange="renderW()"><option value="">Todas</option></select></div>
+    <div class="fgroup"><label>Cliente</label><select id="w-cli" onchange="renderW()"><option value="">Todos</option></select></div>
+    <button onclick="limpar('w')">↺ Limpar</button>
+    <span class="finfo" id="w-info"></span>
+  </div>
+  <div class="kpis">
+    <div class="kpi blue"><div class="lbl">Total usuários</div><div class="val" id="w-k-gg">—</div><div class="sub">GG Connections (filtro)</div></div>
+    <div class="kpi green"><div class="lbl">Clientes</div><div class="val" id="w-k-cli">—</div><div class="sub">no filtro atual</div></div>
+    <div class="kpi teal"><div class="lbl">Mem. mín. total</div><div class="val" id="w-k-memmin">—</div><div class="sub">MB — todos servidores</div></div>
+    <div class="kpi purple"><div class="lbl">Mem. máx. total</div><div class="val" id="w-k-memmax">—</div><div class="sub">MB — todos servidores</div></div>
+    <div class="kpi amber"><div class="lbl">Servidores</div><div class="val" id="w-k-srv">—</div><div class="sub">total de instâncias</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Clientes — clique para ver memória e detalhes</div>
+    <div class="card">
+      <div id="w-cards"></div>
+      <div class="pagination"><span class="page-info" id="w-pinfo"></span><div class="page-btns"><button class="page-btn" id="w-pprev" onclick="paginar('w',-1)">← Anterior</button><button class="page-btn" id="w-pnext" onclick="paginar('w',1)">Próximo →</button></div></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-title">Resumo por região</div>
+    <div class="grid2">
+      <div class="card"><h3>GG Connections por região</h3><div class="csub">Total de usuários por região</div><div style="position:relative;height:220px"><canvas id="w-cReg"></canvas></div></div>
+      <div class="card"><h3>Servidores por tipo</h3><div class="csub">Quantidade total de instâncias</div><div style="position:relative;height:220px"><canvas id="w-cSrv"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TOTVS MODA ==================== -->
+<div id="page-m" class="page">
+  <div class="filtros">
+    <div class="fgroup"><label>Ambiente</label>
+      <select id="m-env" onchange="renderM()"><option value="production">Produção</option><option value="">Todos</option><option value="development">Desenvolvimento</option></select>
+    </div>
+    <div class="fgroup"><label>Datacenter</label><select id="m-reg" onchange="renderM()"><option value="">Todos</option></select></div>
+    <div class="fgroup"><label>Cliente</label><select id="m-cli" onchange="renderM()"><option value="">Todos</option></select></div>
+    <button onclick="limpar('m')">↺ Limpar</button>
+    <span class="finfo" id="m-info"></span>
+  </div>
+  <div class="kpis">
+    <div class="kpi green"><div class="lbl">Clientes</div><div class="val" id="m-k-cli">—</div><div class="sub">no filtro atual</div></div>
+    <div class="kpi teal"><div class="lbl">Total vCPUs</div><div class="val" id="m-k-cpu">—</div><div class="sub">todos os servidores</div></div>
+    <div class="kpi purple"><div class="lbl">Total RAM</div><div class="val" id="m-k-mem">—</div><div class="sub">GB — todos servidores</div></div>
+    <div class="kpi amber"><div class="lbl">Servidores</div><div class="val" id="m-k-srv">—</div><div class="sub">total de instâncias</div></div>
+    <div class="kpi blue"><div class="lbl">Uniface</div><div class="val" id="m-k-uni">—</div><div class="sub">instâncias uniface</div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Clientes — clique para ver CPU, memória e detalhes</div>
+    <div class="card">
+      <div id="m-cards"></div>
+      <div class="pagination"><span class="page-info" id="m-pinfo"></span><div class="page-btns"><button class="page-btn" id="m-pprev" onclick="paginar('m',-1)">← Anterior</button><button class="page-btn" id="m-pnext" onclick="paginar('m',1)">Próximo →</button></div></div>
+    </div>
+  </div>
+  <div class="section"><div class="section-title">Resumo por ambiente e recursos</div>
+    <div class="grid2">
+      <div class="card"><h3>Recursos por ambiente</h3><div class="csub">vCPUs e RAM por produção vs desenvolvimento</div><div style="position:relative;height:220px"><canvas id="m-cAmb"></canvas></div></div>
+      <div class="card"><h3>Servidores por tipo</h3><div class="csub">Core vs Uniface — total de instâncias</div><div style="position:relative;height:220px"><canvas id="m-cSrv"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<footer>Dashboard BI · Consinco · Winthor · TOTVS Moda · Dados do Google Drive · <span id="fdata"></span></footer>
+</div>
+
+<script>
+var DC=[],DW=[],DM=[];
+var charts={},pages={c:0,w:0,m:0},filtC=[],filtW=[],filtM=[];
+var PAGE_SIZE=24;
+
+function carregarDados(){
+  setStep("Carregando Consinco...");
+  google.script.run
+    .withSuccessHandler(function(d){DC=d; setStep("Carregando Winthor...");
+      google.script.run
+        .withSuccessHandler(function(d2){DW=d2; setStep("Carregando TOTVS Moda...");
+          google.script.run
+            .withSuccessHandler(function(d3){DM=d3; inicializar();})
+            .withFailureHandler(function(e){mostrarErro("Erro TOTVS Moda: "+e.message);})
+            .processarModa();
+        })
+        .withFailureHandler(function(e){mostrarErro("Erro Winthor: "+e.message);})
+        .processarWinthor();
+    })
+    .withFailureHandler(function(e){mostrarErro("Erro Consinco: "+e.message);})
+    .processarConsinco();
+}
+
+function setStep(m){document.getElementById("loading-step").textContent=m;}
+function mostrarErro(m){var el=document.getElementById("loading-error");el.textContent=m;el.style.display="block";setStep("Verifique se os arquivos estão na pasta do Drive.");}
+
+function inicializar(){
+  var ds=new Date().toLocaleDateString("pt-BR")+" "+new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+  document.getElementById("hdata").textContent="Atualizado em "+ds;
+  document.getElementById("fdata").textContent=ds;
+  document.getElementById("hc-total").textContent=new Set(DC.map(function(d){return d.c;})).size+" clientes";
+  document.getElementById("hw-total").textContent=new Set(DW.map(function(d){return d.c;})).size+" clientes";
+  document.getElementById("hm-total").textContent=new Set(DM.map(function(d){return d.c;})).size+" clientes";
+  popFiltros(DC,"c"); popFiltros(DW,"w"); popFiltros(DM,"m");
+  renderC(); renderW(); renderM();
+  document.getElementById("loading").style.display="none";
+  document.getElementById("app").style.display="block";
+}
+
+function mudarAba(p,el){
+  document.querySelectorAll(".tab").forEach(function(t){t.classList.remove("active");});
+  document.querySelectorAll(".page").forEach(function(pg){pg.classList.remove("active");});
+  el.classList.add("active"); document.getElementById("page-"+p).classList.add("active");
+}
+
+function popFiltros(dados,p){
+  var regs=[...new Set(dados.map(function(d){return d.r;}).filter(Boolean))].sort();
+  var clis=[...new Set(dados.map(function(d){return d.c;}))].sort();
+  var sr=document.getElementById(p+"-reg"),sc=document.getElementById(p+"-cli");
+  regs.forEach(function(v){var o=document.createElement("option");o.value=v;o.textContent=v;sr.appendChild(o);});
+  clis.forEach(function(v){var o=document.createElement("option");o.value=v;o.textContent=v.length>42?v.slice(0,40)+"…":v;sc.appendChild(o);});
+}
+
+function getFilt(dados,p){
+  var e=document.getElementById(p+"-env").value,r=document.getElementById(p+"-reg").value,c=document.getElementById(p+"-cli").value;
+  return dados.filter(function(d){return (!e||d.e===e)&&(!r||d.r===r)&&(!c||d.c===c);});
+}
+
+function limpar(p){
+  document.getElementById(p+"-reg").value=""; document.getElementById(p+"-cli").value="";
+  if(p==="c"){document.getElementById("c-env").value="";renderC();}
+  else if(p==="w"){document.getElementById("w-env").value="production";renderW();}
+  else{document.getElementById("m-env").value="production";renderM();}
+}
+
+function paginar(p,dir){
+  var fd=p==="c"?filtC:p==="w"?filtW:filtM;
+  var maxP=Math.ceil(fd.length/PAGE_SIZE)-1;
+  pages[p]=Math.max(0,Math.min(maxP,pages[p]+dir));
+  p==="c"?renderCards("c",filtC):p==="w"?renderCards("w",filtW):renderCards("m",filtM);
+}
+
+function sum(arr,key){return arr.reduce(function(a,d){return a+(d[key]||0);},0);}
+
+function envBadge(e){
+  if(e==="production") return '<span class="cc-env env-prod">Produção</span>';
+  if(e==="development") return '<span class="cc-env env-dev">Dev</span>';
+  if(e==="qa") return '<span class="cc-env env-qa">QA</span>';
+  return '<span class="cc-env env-other">'+e+'</span>';
+}
+function pill(cls,label,n){return n>0?'<span class="srv-pill '+cls+'"><span class="dot"></span>'+label+' ×'+n+'</span>':'';}
+function pillsC(d){return pill("srv-relay","Relay",d.n_relay)+pill("srv-desktop","Desktop",d.n_desktop)+pill("srv-pdv","PDV",d.n_pdv)+pill("srv-ndd","NDD",d.n_ndd)+pill("srv-core","Core",d.n_core);}
+function pillsW(d){return pill("srv-relay","Relay",d.n_relay)+pill("srv-elastic","Elastic",d.n_elastic)+pill("srv-pdv","PDV",d.n_pdv)+pill("srv-coletor","Coletor",d.n_coletor)+pill("srv-core","Core",d.n_core);}
+function pillsM(d){return pill("srv-uniface","Uniface",d.n_uniface)+pill("srv-core","Core",d.n_core);}
+
+var TIPO_INFO={
+  relay_instance:{cls:"srv-relay",label:"Relay"},desktop_instance:{cls:"srv-desktop",label:"Desktop"},
+  pdv_instance:{cls:"srv-pdv",label:"PDV"},ndd_instance:{cls:"srv-ndd",label:"NDD"},
+  core_instance:{cls:"srv-core",label:"Core"},elastic_service:{cls:"srv-elastic",label:"Elastic"},
+  elastic_coletor:{cls:"srv-coletor",label:"Coletor"},uniface_instance:{cls:"srv-uniface",label:"Uniface"},
+};
+function tipoInfo(t){for(var k in TIPO_INFO){if(t.indexOf(k)===0)return TIPO_INFO[k];}return{cls:"srv-core",label:t};}
+
+function renderCards(p,data){
+  var start=pages[p]*PAGE_SIZE,slice=data.slice(start,start+PAGE_SIZE),total=data.length;
+  var isC=p==="c",isW=p==="w",isM=p==="m";
+
+  document.getElementById(p+"-cards").innerHTML='<div class="clients-grid">'+slice.map(function(d,i){
+    var idx=start+i;
+    var resHtml;
+    if(isC||isM){
+      resHtml='<div class="cc-resources">'+
+        '<div class="cc-res-item"><div class="cc-res-val cpu-color">'+(d.total_cpu||0)+'</div><div class="cc-res-label">vCPUs</div></div>'+
+        '<div class="cc-res-item"><div class="cc-res-val mem-color">'+(d.total_mem||0)+' GB</div><div class="cc-res-label">RAM</div></div>'+
+        '<div class="cc-res-item"><div class="cc-res-val srv-color">'+(d.total_srv||0)+'</div><div class="cc-res-label">Servidores</div></div>'+
+      '</div>';
+    } else {
+      resHtml='<div class="cc-resources">'+
+        '<div class="cc-res-item"><div class="cc-res-val cpu-color">'+(d.total_mem_min||0)+' MB</div><div class="cc-res-label">Mem. mín.</div></div>'+
+        '<div class="cc-res-item"><div class="cc-res-val mem-color">'+(d.total_mem_max||0)+' MB</div><div class="cc-res-label">Mem. máx.</div></div>'+
+        '<div class="cc-res-item"><div class="cc-res-val srv-color">'+(d.total_srv||0)+'</div><div class="cc-res-label">Servidores</div></div>'+
+      '</div>';
+    }
+
+    var ggHtml='';
+    if(!isM){
+      ggHtml='<div class="cc-gg"><div class="cc-gg-val">'+(d.gg||0)+'</div>'+
+        '<div class="cc-gg-info"><div class="cc-gg-label">Usuários conectados</div>'+
+        '<div class="cc-gg-detail">'+(isC?'PDV: '+(d.gg_pdv||0)+' · NDD: '+(d.gg_ndd||0):'PDV: '+(d.gg_pdv||0)+' · Coletor: '+(d.gg_col||0))+'</div></div></div>';
+    }
+
+    return '<div class="client-card" onclick="abrirDrawer(\''+p+'\','+idx+')">'+
+      '<div class="cc-header"><div class="cc-name" title="'+d.c+'">'+(d.c.length>36?d.c.slice(0,34)+"…":d.c)+'</div>'+envBadge(d.e)+'</div>'+
+      '<div class="cc-region">📍 '+(d.r||"—")+'</div>'+
+      ggHtml+resHtml+
+      '<div class="cc-servers">'+(isC?pillsC(d):isW?pillsW(d):pillsM(d))+'</div>'+
+      '<div class="cc-hint">Clique para ver detalhes →</div>'+
+    '</div>';
+  }).join('')+'</div>';
+
+  document.getElementById(p+"-pinfo").textContent="Mostrando "+(start+1)+"–"+Math.min(start+PAGE_SIZE,total)+" de "+total;
+  document.getElementById(p+"-pprev").disabled=pages[p]===0;
+  document.getElementById(p+"-pnext").disabled=pages[p]>=Math.ceil(total/PAGE_SIZE)-1;
+}
+
+function abrirDrawer(p,idx){
+  var d=p==="c"?filtC[idx]:p==="w"?filtW[idx]:filtM[idx];
+  if(!d) return;
+  var isC=p==="c",isW=p==="w",isM=p==="m";
+  document.getElementById("drawer-title").textContent=d.c;
+  document.getElementById("drawer-sub").textContent=(d.e==="production"?"Produção":d.e==="development"?"Desenvolvimento":d.e)+" · "+(d.r||"—");
+
+  var kpis='<div class="d-kpis">';
+  if(!isM) kpis+='<div class="d-kpi gg"><div class="val">'+(d.gg||0)+'</div><div class="lbl">Usuários GG</div></div>';
+  if(isC||isM){
+    kpis+='<div class="d-kpi cpu"><div class="val">'+(d.total_cpu||0)+'</div><div class="lbl">vCPUs totais</div></div>'+
+          '<div class="d-kpi mem"><div class="val">'+(d.total_mem||0)+' GB</div><div class="lbl">RAM total</div></div>';
+  } else {
+    kpis+='<div class="d-kpi cpu"><div class="val">'+(d.total_mem_min||0)+' MB</div><div class="lbl">Mem. mín.</div></div>'+
+          '<div class="d-kpi mem"><div class="val">'+(d.total_mem_max||0)+' MB</div><div class="lbl">Mem. máx.</div></div>';
+  }
+  kpis+='<div class="d-kpi srv"><div class="val">'+(d.total_srv||0)+'</div><div class="lbl">Servidores</div></div></div>';
+
+  if(isM) kpis='<div class="moda-notice">ℹ️ TOTVS Moda não expõe GG Connections — exibindo CPU e RAM por servidor</div>'+kpis;
+
+  var det='<div class="d-section-title">Detalhes por tipo de servidor</div>';
+  if(d.detalhe&&d.detalhe.length>0){
+    var maxVal=Math.max.apply(null,d.detalhe.map(function(x){return isW?(x.mem_max||0):(x.cpu_total||0);}));
+    det+=d.detalhe.map(function(srv){
+      var ti=tipoInfo(srv.tipo);
+      if(!isW){
+        var pCpu=maxVal>0?Math.round((srv.cpu_total/maxVal)*100):0;
+        var pMem=maxVal>0?Math.round((srv.mem_total/maxVal)*100):0;
+        return '<div class="srv-detail-card">'+
+          '<div class="sdc-header"><span class="sdc-tipo"><span class="srv-pill '+ti.cls+'">'+ti.label+'</span>'+srv.tipo+'</span><span class="sdc-qtd">'+srv.qtd+' instância'+(srv.qtd>1?'s':'')+'</span></div>'+
+          '<div class="sdc-body">'+
+            '<div class="sdc-item"><div class="sdc-val cpu-color">'+srv.cpu_total+'</div><div class="sdc-lbl">vCPUs total</div><div class="sdc-sub">'+srv.cpu_unit+' /unit</div></div>'+
+            '<div class="sdc-item"><div class="sdc-val mem-color">'+srv.mem_total+' GB</div><div class="sdc-lbl">RAM total</div><div class="sdc-sub">'+srv.mem_unit+' GB/unit</div></div>'+
+            '<div class="sdc-item"><div class="sdc-val" style="color:var(--amber)">'+srv.flavor+'</div><div class="sdc-lbl">Flavor</div></div>'+
+          '</div>'+
+          '<div style="padding:0 16px 12px">'+
+            '<div class="bar-row"><div class="bar-label"><span>CPU</span><span>'+srv.cpu_total+' vCPU</span></div><div class="bar-track"><div class="bar-fill" style="width:'+pCpu+'%;background:var(--teal)"></div></div></div>'+
+            '<div class="bar-row" style="margin-top:6px"><div class="bar-label"><span>RAM</span><span>'+srv.mem_total+' GB</span></div><div class="bar-track"><div class="bar-fill" style="width:'+pMem+'%;background:var(--purple)"></div></div></div>'+
+          '</div></div>';
+      } else {
+        return '<div class="srv-detail-card">'+
+          '<div class="sdc-header"><span class="sdc-tipo"><span class="srv-pill '+ti.cls+'">'+ti.label+'</span>'+srv.tipo+'</span><span class="sdc-qtd">'+srv.qtd+' instância'+(srv.qtd>1?'s':'')+'</span></div>'+
+          '<div class="sdc-body">'+
+            '<div class="sdc-item"><div class="sdc-val cpu-color">'+srv.mem_min+' MB</div><div class="sdc-lbl">Mem. mín./unit</div><div class="sdc-sub">Total: '+Math.round(srv.mem_total_min)+' MB</div></div>'+
+            '<div class="sdc-item"><div class="sdc-val mem-color">'+srv.mem_max+' MB</div><div class="sdc-lbl">Mem. máx./unit</div><div class="sdc-sub">Total: '+Math.round(srv.mem_total_max)+' MB</div></div>'+
+            '<div class="sdc-item"><div class="sdc-val" style="color:var(--blue)">'+(srv.gg||0)+'</div><div class="sdc-lbl">GG Conn.</div><div class="sdc-sub">Pagefile: '+srv.pagefile+' MB</div></div>'+
+          '</div></div>';
+      }
+    }).join('');
+  }
+  document.getElementById("drawer-body").innerHTML=kpis+det;
+  document.getElementById("overlay").classList.add("open");
+  document.getElementById("drawer").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+
+function fecharDrawer(){
+  document.getElementById("overlay").classList.remove("open");
+  document.getElementById("drawer").classList.remove("open");
+  document.body.style.overflow="";
+}
+document.addEventListener("keydown",function(e){if(e.key==="Escape")fecharDrawer();});
+
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function barChart(id,labels,datasets){
+  dc(id); charts[id]=new Chart(document.getElementById(id),{type:"bar",data:{labels:labels,datasets:datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:"top",labels:{color:"#8892a4",font:{size:11},padding:12,boxWidth:12}}},
+      scales:{x:{ticks:{color:"#555f74",maxTicksLimit:6},grid:{color:"#2a3447"}},y:{ticks:{color:"#555f74"},grid:{color:"#2a3447"}}}}});
+}
+function donutChart(id,labels,vals,cores){
+  dc(id); charts[id]=new Chart(document.getElementById(id),{type:"doughnut",
+    data:{labels:labels,datasets:[{data:vals,backgroundColor:cores,borderColor:"#161b27",borderWidth:3,hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"right",labels:{color:"#8892a4",font:{size:11},padding:12,boxWidth:12}}}}});
+}
+
+function renderC(){
+  filtC=getFilt(DC,"c").sort(function(a,b){return b.gg-a.gg;}); pages.c=0;
+  var clis=new Set(filtC.map(function(d){return d.c;})), prod=filtC.filter(function(d){return d.e==="production";});
+  document.getElementById("tc-count").textContent=clis.size;
+  document.getElementById("c-info").textContent=clis.size+" clientes · "+filtC.length+" registros";
+  document.getElementById("c-k-gg").textContent=sum(prod,"gg").toLocaleString("pt-BR");
+  document.getElementById("c-k-cli").textContent=clis.size;
+  document.getElementById("c-k-cpu").textContent=sum(filtC,"total_cpu").toLocaleString("pt-BR");
+  document.getElementById("c-k-mem").textContent=sum(filtC,"total_mem").toLocaleString("pt-BR");
+  document.getElementById("c-k-srv").textContent=sum(filtC,"total_srv").toLocaleString("pt-BR");
+  renderCards("c",filtC);
+  var regs=[...new Set(filtC.map(function(d){return d.r;}).filter(Boolean))].sort();
+  barChart("c-cReg",regs,[
+    {label:"Produção",data:regs.map(function(r){return filtC.filter(function(d){return d.r===r&&d.e==="production";}).reduce(function(a,d){return a+(d.gg||0);},0)||null;}),backgroundColor:"#4a9eff",borderRadius:4},
+    {label:"Desenvolvimento",data:regs.map(function(r){return filtC.filter(function(d){return d.r===r&&d.e==="development";}).reduce(function(a,d){return a+(d.gg||0);},0)||null;}),backgroundColor:"#f59e0b",borderRadius:4}
+  ]);
+  var tipos=["relay_instance","desktop_instance","pdv_instance","ndd_instance","core_instance"],nomes=["Relay","Desktop","PDV","NDD","Core"];
+  barChart("c-cSrv",nomes,[
+    {label:"vCPUs",data:tipos.map(function(t){return filtC.reduce(function(a,d){return a+(d.detalhe||[]).filter(function(x){return x.tipo===t;}).reduce(function(b,x){return b+(x.cpu_total||0);},0);},0);}),backgroundColor:"#14b8a6",borderRadius:4},
+    {label:"RAM (GB)",data:tipos.map(function(t){return filtC.reduce(function(a,d){return a+(d.detalhe||[]).filter(function(x){return x.tipo===t;}).reduce(function(b,x){return b+(x.mem_total||0);},0);},0);}),backgroundColor:"#a855f7",borderRadius:4}
+  ]);
+}
+
+function renderW(){
+  filtW=getFilt(DW,"w").sort(function(a,b){return b.gg-a.gg;}); pages.w=0;
+  var clis=new Set(filtW.map(function(d){return d.c;}));
+  document.getElementById("tw-count").textContent=clis.size;
+  document.getElementById("w-info").textContent=clis.size+" clientes · "+filtW.length+" registros";
+  document.getElementById("w-k-gg").textContent=sum(filtW,"gg").toLocaleString("pt-BR");
+  document.getElementById("w-k-cli").textContent=clis.size;
+  document.getElementById("w-k-memmin").textContent=sum(filtW,"total_mem_min").toLocaleString("pt-BR");
+  document.getElementById("w-k-memmax").textContent=sum(filtW,"total_mem_max").toLocaleString("pt-BR");
+  document.getElementById("w-k-srv").textContent=sum(filtW,"total_srv").toLocaleString("pt-BR");
+  renderCards("w",filtW);
+  var regs=[...new Set(filtW.map(function(d){return d.r;}).filter(Boolean))].sort();
+  barChart("w-cReg",regs,[
+    {label:"Produção",data:regs.map(function(r){return filtW.filter(function(d){return d.r===r&&d.e==="production";}).reduce(function(a,d){return a+(d.gg||0);},0)||null;}),backgroundColor:"#4a9eff",borderRadius:4},
+    {label:"Desenvolvimento",data:regs.map(function(r){return filtW.filter(function(d){return d.r===r&&d.e==="development";}).reduce(function(a,d){return a+(d.gg||0);},0)||null;}),backgroundColor:"#f59e0b",borderRadius:4},
+    {label:"QA",data:regs.map(function(r){return filtW.filter(function(d){return d.r===r&&d.e==="qa";}).reduce(function(a,d){return a+(d.gg||0);},0)||null;}),backgroundColor:"#2ecc71",borderRadius:4}
+  ]);
+  donutChart("w-cSrv",["Relay(core)","Elastic","PDV","Coletor"],
+    [sum(filtW,"n_relay"),sum(filtW,"n_elastic"),sum(filtW,"n_pdv"),sum(filtW,"n_coletor")],
+    ["#ef4444","#6366f1","#f59e0b","#ec4899"]);
+}
+
+function renderM(){
+  filtM=getFilt(DM,"m").sort(function(a,b){return (b.total_cpu||0)-(a.total_cpu||0);}); pages.m=0;
+  var clis=new Set(filtM.map(function(d){return d.c;}));
+  document.getElementById("tm-count").textContent=clis.size;
+  document.getElementById("m-info").textContent=clis.size+" clientes · "+filtM.length+" registros";
+  document.getElementById("m-k-cli").textContent=clis.size;
+  document.getElementById("m-k-cpu").textContent=sum(filtM,"total_cpu").toLocaleString("pt-BR");
+  document.getElementById("m-k-mem").textContent=sum(filtM,"total_mem").toLocaleString("pt-BR");
+  document.getElementById("m-k-srv").textContent=sum(filtM,"total_srv").toLocaleString("pt-BR");
+  document.getElementById("m-k-uni").textContent=sum(filtM,"n_uniface").toLocaleString("pt-BR");
+  renderCards("m",filtM);
+  var ambientes=["production","development"],labels=["Produção","Desenvolvimento"],cores=["#4a9eff","#f59e0b"];
+  barChart("m-cAmb",labels,[
+    {label:"vCPUs",data:ambientes.map(function(e){return filtM.filter(function(d){return d.e===e;}).reduce(function(a,d){return a+(d.total_cpu||0);},0)||null;}),backgroundColor:"#14b8a6",borderRadius:4},
+    {label:"RAM (GB)",data:ambientes.map(function(e){return filtM.filter(function(d){return d.e===e;}).reduce(function(a,d){return a+(d.total_mem||0);},0)||null;}),backgroundColor:"#a855f7",borderRadius:4}
+  ]);
+  donutChart("m-cSrv",["Core","Uniface"],
+    [sum(filtM,"n_core"),sum(filtM,"n_uniface")],
+    ["#14b8a6","#a855f7"]);
+}
+
+carregarDados();
+</script>
+</body>
+</html>
